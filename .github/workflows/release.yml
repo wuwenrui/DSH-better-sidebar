@@ -42,6 +42,8 @@ concurrency:
 
 jobs:
   publish:
+    # LawyerDesk forks distribute reviewed private-channel artifacts, never the author's npm package.
+    if: github.repository == 'omdsh-dev/DSH-better-sidebar'
     name: build · verify · publish
     runs-on: ubuntu-latest
     timeout-minutes: 30
