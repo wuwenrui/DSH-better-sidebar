@@ -1,14 +1,14 @@
 /** Real filesystem and local HTTP security checks; no production services. */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdtemp, mkdir, writeFile, symlink, rm } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, symlink, rm, realpath } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
 import { createServer, type Server } from 'node:http'
 import { createMaterialsHandler } from '../src/lawyer/routes.ts'
 import { listMaterials, previewMaterial, type MaterialAccess } from '../src/lawyer/materials.ts'
 let root: string; let outside: string; let server: Server; let base: string; let access: MaterialAccess
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'lawyer-materials-'))
+  root = await realpath(await mkdtemp(join(tmpdir(), 'lawyer-materials-')))
   outside = await mkdtemp(join(tmpdir(), 'lawyer-outside-'))
   await writeFile(join(root, '证据.txt'), '真实工作区材料')
   await writeFile(join(root, '合同.pdf'), '%PDF-1.7\nfixture')
@@ -20,7 +20,7 @@ beforeEach(async () => {
   await writeFile(join(root, 'protected/secret.txt'), 'product secret')
   access = {
     sessions: { get: id => id === 'session-a' ? { header: { cwd: root } } : id === 'session-b' ? { header: { cwd: outside } } : undefined },
-    assertFileAccess: path => { if (path.includes('/protected')) throw new Error('product policy refusal') },
+    assertFileAccess: path => { if (path === join(root, 'protected') || path.startsWith(join(root, 'protected') + sep)) throw new Error('product policy refusal') },
   }
   server = createServer(createMaterialsHandler(access))
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
